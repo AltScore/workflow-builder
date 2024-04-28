@@ -29,10 +29,19 @@ def load_workflow_definition(workflow_alias: str, workflow_version: str):
         return json.load(f)
 
 
+def get_alias_and_version(workflow_path: str) -> dict:
+    version = workflow_path.split("_")[-1]
+    alias = workflow_path[0:workflow_path.index(version) - 1]
+    return {
+        "alias": alias,
+        "version": version,
+        "label": workflow_path
+    }
+
+
 def list_workflows():
     workflows = [f for f in os.listdir(Path(config("PROJECT_ROOT")) / "app" / "workflows") if
                  os.path.isdir(Path(config("PROJECT_ROOT")) / "app" / "workflows" / f)]
     return [
-        {"alias": workflow.split("_")[0], "version": workflow.split("_")[-1], "label": workflow} for workflow in
-        workflows
+        get_alias_and_version(workflow) for workflow in workflows
     ]
