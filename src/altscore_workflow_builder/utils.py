@@ -105,13 +105,13 @@ def add_item(task_details, key, item_details, task_definitions, selected_task, i
     st.rerun()
 
 
-def remove_item(task_details, key, alias_to_remove, task_definitions, selected_task):
-    """Remove an item (input/output) from the task details."""
-    task_details[key] = [item for item in task_details[key] if item['alias'] != alias_to_remove]
-    task_definitions[selected_task] = task_details
-    save_task_definitions(task_definitions)
-    st.sidebar.success(f"{key[:-1].capitalize()} removed successfully!")
-    st.rerun()
+def update_edges(action, src, tgt, workflow_alias, workflow_version, flow_definition):
+    data_to_append = {src: {}}
+    if action == 'add' and tgt not in flow_definition["task_instances"][src]["to"]:
+        flow_definition["task_instances"][src]["to"][tgt] = {}
+    elif action == 'remove' and tgt in flow_definition["task_instances"][src]["to"]:
+        flow_definition["task_instances"][src]["to"].pop(tgt)
+    save_workflow_definition(workflow_alias, workflow_version, flow_definition)
 
 
 native_configuration = {

@@ -1,6 +1,6 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
-    save_workflow_definition, save_task_definitions, determine_levels, add_item, remove_item
+    save_workflow_definition, save_task_definitions, determine_levels, add_item, update_edges
 from altscore_workflow_builder.workflow import task_instance_dropdown, task_instance_graph
 from altscore_workflow_builder.task import task_graph
 from altscore_workflow_builder.utils import hide_deploy_button
@@ -99,3 +99,18 @@ if selection:
                 save_task_definitions(task_definitions)
                 st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
                 st.rerun()
+
+
+
+
+
+    # UI for edge management
+    st.sidebar.title("Manage Edges")
+    source_task = st.sidebar.selectbox("Source Task", all_task_names, index=all_task_names.index(selection))
+    target_task = st.sidebar.selectbox("Target Task", all_task_names, index=all_task_names.index(selection))
+    if st.sidebar.button("Add Edge"):
+        update_edges('add', source_task, target_task, workflow['alias'], workflow['version'], flow_definition)
+        st.rerun()
+    if st.sidebar.button("Remove Edge"):
+        update_edges('remove', source_task, target_task, workflow['alias'], workflow['version'], flow_definition)
+        st.rerun()
