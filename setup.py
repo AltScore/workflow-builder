@@ -37,6 +37,7 @@ setup(
         "pyjwt",
         "altscore",
         "streamlit",
+        "streamlit-agraph",
     ],
     extras_require={},
     python_requires=">=3.8",
