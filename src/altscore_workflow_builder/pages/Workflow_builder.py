@@ -100,10 +100,6 @@ if selection:
                 st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
                 st.rerun()
 
-
-
-
-
     # UI for edge management
     st.sidebar.title("Manage Edges")
     source_task = st.sidebar.selectbox("Source Task", all_task_names, index=all_task_names.index(selection))
