@@ -7,9 +7,9 @@ from altscore_workflow_builder.utils import hide_deploy_button
 from streamlit_agraph import agraph, Node, Edge, Config
 import json
 
+st.set_page_config(layout="wide")
 hide_deploy_button()
 st.title("Workflow Inspector")
-st.set_page_config(layout="wide")
 st.sidebar.header("Graph Configuration")
 workflow = st.sidebar.selectbox("Select Workflow", list_workflows())
 flow_definition = load_workflow_definition(workflow['alias'], workflow['version'])
