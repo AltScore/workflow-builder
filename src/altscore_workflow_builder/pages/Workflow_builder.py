@@ -14,8 +14,6 @@ workflow = st.sidebar.selectbox("Select Workflow", list_workflows())
 flow_definition = load_workflow_definition(workflow['alias'], workflow['version'])
 task_definitions = load_task_definitions()
 
-
-
 # Create nodes, edges, and levels for the agraph
 nodes = []
 edges = []
@@ -54,62 +52,50 @@ config = Config(
 )
 
 # Display the graph
-agraph(nodes=nodes, edges=edges, config=config)
+selection = agraph(nodes=nodes, edges=edges, config=config)
 
-# Task editing sidebar
-st.sidebar.header("Edit Task Properties")
-selected_task = st.sidebar.selectbox("Select a task to edit:", list(task_nodes.keys()))
+if selection:
+    st.sidebar.write(f"Selected task: {selection}")
+    task_info = task_nodes[selection]
+    selected_task = st.sidebar.selectbox("Select Task", all_task_names, index=all_task_names.index(selection))
+    if selected_task:
+        st.sidebar.write(f"Editing: {selected_task}")
+        task_info = task_nodes[selected_task]
+        task_details = task_definitions.get(task_info['type'], {})
 
-if selected_task:
-    st.sidebar.write(f"Editing: {selected_task}")
-    task_info = task_nodes[selected_task]
-    task_details = task_definitions.get(task_info['type'], {})
+        # Inputs, Outputs, Overrides, Conversions management
+        for detail_key in ['inputs', 'outputs', 'overrides', 'conversions']:
+            # Add a Title
+            st.sidebar.title(f"{detail_key.capitalize()} Management")
+            st.sidebar.json(task_details.get(detail_key, []))
 
-    # Inputs management
-    st.sidebar.json(task_details.get('inputs', []))
-    input_alias = st.sidebar.text_input("Input Alias")
-    if st.sidebar.button("Add new input"):
-        add_item(task_details, 'inputs', input_alias, task_definitions, selected_task)
+            if detail_key in ['overrides', 'conversions']:
+                key_name = st.sidebar.text_input(f"Key for {detail_key[:-1]}", key=f"{detail_key}_key")
+                value_name = st.sidebar.text_input(f"Value for {detail_key[:-1]}", key=f"{detail_key}_value")
+                item_details = {"key": key_name, "value": value_name}
+                button_label = f"Add new {detail_key[:-1]}"
+                if st.sidebar.button(button_label):
+                    add_item(task_details, detail_key, item_details, task_definitions, selected_task, is_key_value=True)
+            else:
+                alias_name = st.sidebar.text_input(f"Alias for {detail_key[:-1]}", key=f"{detail_key}_alias")
+                item_details = {"alias": alias_name}
+                button_label = f"Add new {detail_key[:-1]}"
+                if st.sidebar.button(button_label):
+                    add_item(task_details, detail_key, item_details, task_definitions, selected_task)
 
-    input_aliases = [input_item['alias'] for input_item in task_details.get('inputs', [])]
-    input_to_remove = st.sidebar.selectbox("Select input to remove", input_aliases)
-    if st.sidebar.button("Remove selected input"):
-        remove_item(task_details, 'inputs', input_to_remove, task_definitions, selected_task)
-
-    # Outputs management
-    st.sidebar.json(task_details.get('outputs', []))
-    output_alias = st.sidebar.text_input("Output Alias")
-    if st.sidebar.button("Add new output"):
-        add_item(task_details, 'outputs', output_alias, task_definitions, selected_task)
-
-    output_aliases = [output_item['alias'] for output_item in task_details.get('outputs', [])]
-    output_to_remove = st.sidebar.selectbox("Select output to remove", output_aliases)
-    if st.sidebar.button("Remove selected output"):
-        remove_item(task_details, 'outputs', output_to_remove, task_definitions, selected_task)
-
-
-    # output_json = st.sidebar.json(task_details.get('outputs', []))
-
-    # input_override = st.sidebar.text_area("Input Override",
-    #                                       value=json.dumps(task_info.get("input_override", {}), indent=4))
-    # input_conversion = st.sidebar.text_area("Input Conversion",
-    #                                         value=json.dumps(task_info.get("input_conversion", {}), indent=4))
-    #
-    # current_edges = task_nodes[selected_task].get("to", [])
-    # new_edges = st.sidebar.multiselect("Select tasks that this task should point to:",
-    #                                    all_task_names,
-    #                                    default=current_edges)
-
-    # if st.sidebar.button("Save Changes"):
-    #     try:
-    #         task_details['outputs'] = json.loads(output_json)
-    #         task_info['input_override'] = json.loads(input_override)
-    #         task_info['input_conversion'] = json.loads(input_conversion)
-    #         save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
-
-    #         if new_edges != current_edges:
-    #             task_nodes[selected_task]["to"] = new_edges
-    #         st.sidebar.success("Changes saved successfully!")
-    #         st.rerun()
-    # except json.JSONDecodeError:
-    #     st.sidebar.error("Invalid JSON format. Please check your input.")
+            # Deletion interface remains largely the same
+            aliases = [item['alias'] if 'alias' in item else f"{item['key']}:{item['value']}" for item in
+                       task_details.get(detail_key, [])]
+            item_to_remove = st.sidebar.selectbox(f"Select {detail_key[:-1]} to remove", aliases,
+                                                  key=f"{detail_key}_remove")
+            if st.sidebar.button(f"Remove selected {detail_key[:-1]}"):
+                if detail_key in ['overrides', 'conversions']:
+                    task_details[detail_key] = [item for item in task_details[detail_key] if
+                                                f"{item['key']}:{item['value']}" != item_to_remove]
+                else:
+                    task_details[detail_key] = [item for item in task_details[detail_key] if
+                                                item['alias'] != item_to_remove]
+                task_definitions[selected_task] = task_details
+                save_task_definitions(task_definitions)
+                st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
+                st.rerun()

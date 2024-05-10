@@ -84,16 +84,25 @@ def determine_levels(task_nodes):
     return levels, level_spacing
 
 
-def add_item(task_details, key, alias, task_definitions, selected_task):
-    """Add an item (input/output) to the task details."""
-    if alias:
-        task_details[key].append({"alias": alias})
-        task_definitions[selected_task] = task_details
-        save_task_definitions(task_definitions)
-        st.sidebar.success(f"New {key[:-1]} added successfully!")
-        st.rerun()
+def add_item(task_details, key, item_details, task_definitions, selected_task, is_key_value=False):
+    """Add an item (input/output/override/conversion) to the task details."""
+    if is_key_value:
+        if all(item_details.values()):  # Check if both key and value are provided
+            task_details[key].append(item_details)
+            task_definitions[selected_task] = task_details
+            save_task_definitions(task_definitions)
+            st.sidebar.success(f"New {key[:-1]} added successfully!")
+        else:
+            st.sidebar.error(f"Both key and value are required for {key[:-1]}.")
     else:
-        st.sidebar.error(f"{key[:-1].capitalize()} alias cannot be empty.")
+        if item_details['alias']:
+            task_details[key].append(item_details)
+            task_definitions[selected_task] = task_details
+            save_task_definitions(task_definitions)
+            st.sidebar.success(f"New {key[:-1]} added successfully!")
+        else:
+            st.sidebar.error(f"{key[:-1].capitalize()} alias cannot be empty.")
+    st.rerun()
 
 
 def remove_item(task_details, key, alias_to_remove, task_definitions, selected_task):
