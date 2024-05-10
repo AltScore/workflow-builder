@@ -50,22 +50,20 @@ def list_workflows():
     ]
 
 
-def calculate_task_levels(task_nodes):
+def calculate_task_levels(task_nodes, scale=100):
     levels = {}
     queue = []
 
-    # Start with tasks that have no incoming edges (sources)
     sources = [task for task, details in task_nodes.items() if
                all(task not in t.get("to", []) for t in task_nodes.values())]
     for source in sources:
         queue.append((source, 0))  # (task_name, level)
 
-    # BFS to assign levels
     while queue:
         current_task, current_level = queue.pop(0)
         if current_task in levels:
             continue
-        levels[current_task] = current_level
+        levels[current_task] = current_level * scale  # Scale horizontal positions
         for next_task in task_nodes[current_task].get("to", []):
             queue.append((next_task, current_level + 1))
 

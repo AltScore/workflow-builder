@@ -97,7 +97,9 @@ if selected_task:
             task_info['input_conversion'] = json.loads(input_conversion)
             save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
             save_task_definitions(task_definitions)
+            if new_edges != current_edges:
+                task_nodes[selected_task]["to"] = new_edges
             st.sidebar.success("Changes saved successfully!")
-            st.experimental_rerun()
+            st.rerun()
         except json.JSONDecodeError:
             st.sidebar.error("Invalid JSON format. Please check your input.")
