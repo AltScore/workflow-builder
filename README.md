@@ -8,5 +8,5 @@ pip install altscore-workflow-builder
 ```
 Then on a workflow project directory run:
 ```bash
-start-workflow-builder
+run-workflow-builder
 ```
