@@ -50,12 +50,12 @@ def list_workflows():
     ]
 
 
-def calculate_task_levels(task_nodes, scale=100):
-    levels = {}
+def calculate_positions(task_nodes, horizontal_spacing=100, vertical_spacing=100):
+    levels = {}  # Stores level and position for each node
     queue = []
 
-    sources = [task for task, details in task_nodes.items() if
-               all(task not in t.get("to", []) for t in task_nodes.values())]
+    # Start with nodes that have no incoming edges
+    sources = [task for task, details in task_nodes.items() if all(task not in t.get("to", []) for t in task_nodes.values())]
     for source in sources:
         queue.append((source, 0))  # (task_name, level)
 
@@ -63,7 +63,10 @@ def calculate_task_levels(task_nodes, scale=100):
         current_task, current_level = queue.pop(0)
         if current_task in levels:
             continue
-        levels[current_task] = current_level * scale  # Scale horizontal positions
+        # Calculate x position based on the level
+        x_position = current_level * horizontal_spacing
+        y_position = len(levels) * vertical_spacing
+        levels[current_task] = (x_position, y_position)
         for next_task in task_nodes[current_task].get("to", []):
             queue.append((next_task, current_level + 1))
 

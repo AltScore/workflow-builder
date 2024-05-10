@@ -1,6 +1,6 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
-    save_workflow_definition, save_task_definitions, calculate_task_levels
+    save_workflow_definition, save_task_definitions, calculate_positions
 from altscore_workflow_builder.workflow import task_instance_dropdown, task_instance_graph
 from altscore_workflow_builder.task import task_graph
 from altscore_workflow_builder.utils import hide_deploy_button
@@ -34,12 +34,14 @@ hierarchical_view = st.sidebar.checkbox("Hierarchical View", False)
 nodes = []
 edges = []
 task_nodes = flow_definition["task_instances"]
-levels = calculate_task_levels(task_nodes)
+positions = calculate_positions(task_nodes)
 all_task_names = list(task_nodes.keys())
+
 for task_name, task_info in task_nodes.items():
     task_details = task_definitions.get(task_info['type'], {})
+    x, y = positions[task_name]
     label = f"{task_name}\nInputs: {', '.join([inp['alias'] for inp in task_details.get('inputs', [])])}\nOutputs: {', '.join([out['alias'] for out in task_details.get('outputs', [])])}"
-    nodes.append(Node(id=task_name, label=label, color=node_color, size=30, y=levels[task_name] * 100))
+    nodes.append(Node(id=task_name, label=label, color=node_color, size=30, x=x, y=y))
 
 for task_name, task_info in task_nodes.items():
     if 'to' in task_info:
