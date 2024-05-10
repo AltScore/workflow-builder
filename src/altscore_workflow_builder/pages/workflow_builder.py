@@ -17,7 +17,7 @@ task_definitions = load_task_definitions()
 
 # Configurable parameters in the sidebar
 graph_height = st.sidebar.number_input("Height", min_value=500, max_value=1500, value=750)
-graph_width = st.sidebar.number_input("Width", min_value=500, max_value=1500, value="100%")
+graph_width = st.sidebar.number_input("Width", value="100%")
 background_color = st.sidebar.color_picker("Background Color", '#ffffff')
 font_size = st.sidebar.slider("Font Size", 10, 20, 14)
 node_color = st.sidebar.color_picker("Node Color", '#88c999')
