@@ -29,6 +29,13 @@ def load_workflow_definition(workflow_alias: str, workflow_version: str):
         return json.load(f)
 
 
+def save_workflow_definition(workflow_alias: str, workflow_version: str, flow_definition: dict):
+    with open(Path(config(
+            "PROJECT_ROOT")) / "app" / "workflows" / f"{workflow_alias}_{workflow_version}/flow_definition.json",
+              "w") as f:
+        json.dump(flow_definition, f)
+
+
 def list_workflows():
     workflows = [f for f in os.listdir(Path(config("PROJECT_ROOT")) / "app" / "workflows") if
                  os.path.isdir(Path(config("PROJECT_ROOT")) / "app" / "workflows" / f)]
