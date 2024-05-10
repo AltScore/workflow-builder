@@ -84,6 +84,27 @@ def determine_levels(task_nodes):
     return levels, level_spacing
 
 
+def add_item(task_details, key, alias, task_definitions, selected_task):
+    """Add an item (input/output) to the task details."""
+    if alias:
+        task_details[key].append({"alias": alias})
+        task_definitions[selected_task] = task_details
+        save_task_definitions(task_definitions)
+        st.sidebar.success(f"New {key[:-1]} added successfully!")
+        st.rerun()
+    else:
+        st.sidebar.error(f"{key[:-1].capitalize()} alias cannot be empty.")
+
+
+def remove_item(task_details, key, alias_to_remove, task_definitions, selected_task):
+    """Remove an item (input/output) from the task details."""
+    task_details[key] = [item for item in task_details[key] if item['alias'] != alias_to_remove]
+    task_definitions[selected_task] = task_details
+    save_task_definitions(task_definitions)
+    st.sidebar.success(f"{key[:-1].capitalize()} removed successfully!")
+    st.rerun()
+
+
 native_configuration = {
     "workflow_args": {
         "name": "workflow_args",
