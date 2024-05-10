@@ -1,6 +1,6 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
-    save_workflow_definition
+    save_workflow_definition, save_task_definitions, calculate_task_levels
 from altscore_workflow_builder.workflow import task_instance_dropdown, task_instance_graph
 from altscore_workflow_builder.task import task_graph
 from altscore_workflow_builder.utils import hide_deploy_button
@@ -30,14 +30,16 @@ node_highlight = st.sidebar.checkbox("Highlight Nodes", True)
 collapsible = st.sidebar.checkbox("Collapsible Nodes", True)
 hierarchical_view = st.sidebar.checkbox("Hierarchical View", False)
 
-# Create nodes and edges for the agraph
+# Create nodes, edges, and levels for the agraph
 nodes = []
 edges = []
 task_nodes = flow_definition["task_instances"]
+levels = calculate_task_levels(task_nodes)
+all_task_names = list(task_nodes.keys())
 for task_name, task_info in task_nodes.items():
     task_details = task_definitions.get(task_info['type'], {})
     label = f"{task_name}\nInputs: {', '.join([inp['alias'] for inp in task_details.get('inputs', [])])}\nOutputs: {', '.join([out['alias'] for out in task_details.get('outputs', [])])}"
-    nodes.append(Node(id=task_name, label=label, color=node_color, size=30))
+    nodes.append(Node(id=task_name, label=label, color=node_color, size=30, y=levels[task_name] * 100))
 
 for task_name, task_info in task_nodes.items():
     if 'to' in task_info:
@@ -81,6 +83,12 @@ if selected_task:
     input_conversion = st.sidebar.text_area("Input Conversion",
                                             value=json.dumps(task_info.get("input_conversion", {}), indent=4))
 
+    current_edges = task_nodes[selected_task].get("to", [])
+    new_edges = st.sidebar.multiselect("Select tasks that this task should point to:",
+                                       all_task_names,
+                                       default=current_edges)
+
+    # Display the task graph
     if st.sidebar.button("Save Changes"):
         try:
             task_details['inputs'] = json.loads(input_json)
@@ -88,6 +96,8 @@ if selected_task:
             task_info['input_override'] = json.loads(input_override)
             task_info['input_conversion'] = json.loads(input_conversion)
             save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
+            save_task_definitions(task_definitions)
             st.sidebar.success("Changes saved successfully!")
+            st.experimental_rerun()
         except json.JSONDecodeError:
             st.sidebar.error("Invalid JSON format. Please check your input.")
