@@ -63,8 +63,8 @@ def calculate_positions(task_nodes, horizontal_spacing=100, vertical_spacing=100
         current_task, current_level = queue.pop(0)
         if current_task in levels:
             continue
-        # Calculate x position based on the level
-        x_position = current_level * horizontal_spacing
+        # Calculate x position based on the amount of tasks in the current level
+        x_position = (len([t for t, l in levels.items() if l == current_level]) + 1) * horizontal_spacing
         y_position = len(levels) * vertical_spacing
         levels[current_task] = (x_position, y_position)
         for next_task in task_nodes[current_task].get("to", []):
