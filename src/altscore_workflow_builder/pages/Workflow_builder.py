@@ -12,20 +12,20 @@ flow_definition = load_workflow_definition(workflow['alias'], workflow['version'
 task_definitions = load_task_definitions()
 
 # Check and initialize session state for form visibility
-if 'show_form' not in st.session_state:
-    st.session_state['show_form'] = False
+if 'create_task' not in st.session_state:
+    st.session_state['create_task'] = False
 
 # Create columns for the buttons
-col1, col2, col3, col4, col5, col6 = st.columns(6)  # TODO: Agregar más botones
+col1, col2, col3, col4, col5, col6 = st.columns(6)  # TODO: Agregar más botones para descomprimir la barra
 
 # Button to toggle form visibility in the first column
 with col1:
     if st.button('Create New Task'):
-        st.session_state.show_form = not st.session_state.show_form
+        st.session_state.create_task = not st.session_state.create_task
 
 # Conditionally display the form based on toggle state
-if st.session_state.show_form:
-    with st.form("create_task_form"):
+if st.session_state.create_task:
+    with st.form("create_task_form"):  # TODO: No crea el task.py ni agrega la clase al __init__.py
         new_task_name = st.text_input("Task Name")
         new_task_inputs = st.text_area("Inputs (comma-separated)")
         new_task_outputs = st.text_area("Outputs (comma-separated)")
@@ -41,7 +41,7 @@ if st.session_state.show_form:
                 save_task_definitions(task_definitions)
                 save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
                 st.success("Task created successfully!")
-                st.session_state.show_form = False
+                st.session_state.create_task = False
                 st.rerun()
             else:
                 st.error("Task name is required or already exists.")
@@ -143,32 +143,32 @@ if selection:
         update_edges('remove', source_task, target_task, workflow['alias'], workflow['version'], flow_definition)
         st.rerun()
 
-    # Assuming your other functions and imports are defined here
-
     # Check if 'confirm_delete' is not in session_state, then initialize it
     if 'confirm_delete' not in st.session_state:
         st.session_state['confirm_delete'] = None
 
-    # UI for confirming task deletion
-    if st.sidebar.button("Delete Task", key="delete_task", type="primary"):
-        if st.session_state.confirm_delete == selected_task:
-            # Perform deletion if confirmed
-            if selected_task in task_definitions:
-                del task_definitions[selected_task]
-            if selected_task in flow_definition["task_instances"]:
-                del flow_definition["task_instances"][selected_task]
-            for task, details in flow_definition["task_instances"].items():
-                if 'to' in details:
-                    details['to'] = [t for t in details['to'] if t != selected_task]
+    # Button to toggle form visibility in the first column
+    with col6:
+        if st.button('Delete Task', key="delete_task", type="primary"):
+            # UI for confirming task deletion
+            if st.session_state.confirm_delete == selected_task:
+                # Perform deletion if confirmed
+                if selected_task in task_definitions:
+                    del task_definitions[selected_task]
+                if selected_task in flow_definition["task_instances"]:
+                    del flow_definition["task_instances"][selected_task]
+                for task, details in flow_definition["task_instances"].items():
+                    if 'to' in details:
+                        details['to'] = [t for t in details['to'] if t != selected_task]
 
-            save_task_definitions(task_definitions)
-            save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
+                save_task_definitions(task_definitions)
+                save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
 
-            st.success(f"Task '{selected_task}' deleted successfully!")
-            st.session_state.confirm_delete = None  # Reset the confirmation state
-            st.rerun()
-        else:
-            # Set confirmation and show warning
-            st.session_state.confirm_delete = selected_task
-            st.sidebar.warning(
-                f"Are you sure you want to delete '{selected_task}'? Click 'Delete Task' again to confirm.")
+                st.success(f"Task '{selected_task}' deleted successfully!")
+                st.session_state.confirm_delete = None  # Reset the confirmation state
+                st.rerun()
+            else:
+                # Set confirmation and show warning
+                st.session_state.confirm_delete = selected_task
+                st.warning(
+                    f"Are you sure you want to delete '{selected_task}'? Click 'Delete Task' again to confirm.")
