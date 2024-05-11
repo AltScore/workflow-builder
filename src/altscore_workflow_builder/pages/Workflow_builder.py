@@ -1,6 +1,7 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
-    save_workflow_definition, save_task_definitions, determine_levels, add_item, update_edges
+    save_workflow_definition, save_task_definitions, determine_levels, add_item, update_edges, create_task, \
+    delete_task
 from altscore_workflow_builder.utils import hide_deploy_button
 from streamlit_agraph import agraph, Node, Edge, Config
 
@@ -9,38 +10,30 @@ hide_deploy_button()
 st.sidebar.header("Graph Configuration")
 workflow = st.sidebar.selectbox("Select Workflow", list_workflows())
 flow_definition = load_workflow_definition(workflow['alias'], workflow['version'])
-task_definitions = load_task_definitions()
+native_task_definitions, custom_task_definitions = load_task_definitions()
+task_definitions = {**native_task_definitions, **custom_task_definitions}
 
 # Check and initialize session state for form visibility
 if 'create_task' not in st.session_state:
     st.session_state['create_task'] = False
 
 # Create columns for the buttons
-col1, col2, col3, col4, col5, col6 = st.columns(6)  # TODO: Agregar más botones para descomprimir la barra
+col1, col2, col3, col4 = st.columns(4)
 
-# Button to toggle form visibility in the first column
 with col1:
     if st.button('Create New Task'):
         st.session_state.create_task = not st.session_state.create_task
 
-# Conditionally display the form based on toggle state
 if st.session_state.create_task:
-    with st.form("create_task_form"):  # TODO: No crea el task.py ni agrega la clase al __init__.py
+    with st.form("create_task_form"):
         new_task_name = st.text_input("Task Name")
         new_task_inputs = st.text_area("Inputs (comma-separated)")
         new_task_outputs = st.text_area("Outputs (comma-separated)")
         submitted = st.form_submit_button("Submit Task")
         if submitted:
-            if new_task_name and new_task_name not in task_definitions:
-                task_definitions[new_task_name] = {
-                    "name": new_task_name,
-                    "inputs": [{"alias": inp.strip()} for inp in new_task_inputs.split(',') if inp],
-                    "outputs": [{"alias": out.strip()} for out in new_task_outputs.split(',') if out]
-                }
-                flow_definition["task_instances"][new_task_name] = {"type": new_task_name, "to": {}}
-                save_task_definitions(task_definitions)
-                save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
-                st.success("Task created successfully!")
+            if new_task_name and new_task_name not in custom_task_definitions:
+                create_task(new_task_name, custom_task_definitions, new_task_inputs, new_task_outputs, workflow['alias'],
+                            workflow['version'], flow_definition)
                 st.session_state.create_task = False
                 st.rerun()
             else:
@@ -87,11 +80,9 @@ config = Config(
 selection = agraph(nodes=nodes, edges=edges, config=config)
 
 if selection:
-    st.sidebar.write(f"Selected task: {selection}")
     task_info = task_nodes[selection]
     selected_task = st.sidebar.selectbox("Select Task", all_task_names, index=all_task_names.index(selection))
     if selected_task:
-        st.sidebar.write(f"Editing: {selected_task}")
         task_info = task_nodes[selected_task]
         task_details = task_definitions.get(task_info['type'], {})
 
@@ -107,13 +98,13 @@ if selection:
                 item_details = {"key": key_name, "value": value_name}
                 button_label = f"Add new {detail_key[:-1]}"
                 if st.sidebar.button(button_label):
-                    add_item(task_details, detail_key, item_details, task_definitions, selected_task, is_key_value=True)
+                    add_item(task_details, detail_key, item_details, custom_task_definitions, selected_task, is_key_value=True)
             else:
                 alias_name = st.sidebar.text_input(f"Alias for {detail_key[:-1]}", key=f"{detail_key}_alias")
                 item_details = {"alias": alias_name}
                 button_label = f"Add new {detail_key[:-1]}"
                 if st.sidebar.button(button_label):
-                    add_item(task_details, detail_key, item_details, task_definitions, selected_task)
+                    add_item(task_details, detail_key, item_details, custom_task_definitions, selected_task)
 
             # Deletion interface remains largely the same
             aliases = [item['alias'] if 'alias' in item else f"{item['key']}:{item['value']}" for item in
@@ -128,7 +119,7 @@ if selection:
                     task_details[detail_key] = [item for item in task_details[detail_key] if
                                                 item['alias'] != item_to_remove]
                 task_definitions[selected_task] = task_details
-                save_task_definitions(task_definitions)
+                save_task_definitions(custom_task_definitions)
                 st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
                 st.rerun()
 
@@ -148,23 +139,11 @@ if selection:
         st.session_state['confirm_delete'] = None
 
     # Button to toggle form visibility in the first column
-    with col6:
+    with col4:
         if st.button('Delete Task', key="delete_task", type="primary"):
             # UI for confirming task deletion
             if st.session_state.confirm_delete == selected_task:
-                # Perform deletion if confirmed
-                if selected_task in task_definitions:
-                    del task_definitions[selected_task]
-                if selected_task in flow_definition["task_instances"]:
-                    del flow_definition["task_instances"][selected_task]
-                for task, details in flow_definition["task_instances"].items():
-                    if 'to' in details:
-                        details['to'] = [t for t in details['to'] if t != selected_task]
-
-                save_task_definitions(task_definitions)
-                save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
-
-                st.success(f"Task '{selected_task}' deleted successfully!")
+                delete_task(selected_task, custom_task_definitions, flow_definition, workflow)
                 st.session_state.confirm_delete = None  # Reset the confirmation state
                 st.rerun()
             else:
