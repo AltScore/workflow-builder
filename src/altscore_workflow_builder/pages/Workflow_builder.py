@@ -1,11 +1,8 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
     save_workflow_definition, save_task_definitions, determine_levels, add_item, update_edges
-from altscore_workflow_builder.workflow import task_instance_dropdown, task_instance_graph
-from altscore_workflow_builder.task import task_graph
 from altscore_workflow_builder.utils import hide_deploy_button
 from streamlit_agraph import agraph, Node, Edge, Config
-import json
 
 st.set_page_config(layout="wide")
 hide_deploy_button()
@@ -13,6 +10,41 @@ st.sidebar.header("Graph Configuration")
 workflow = st.sidebar.selectbox("Select Workflow", list_workflows())
 flow_definition = load_workflow_definition(workflow['alias'], workflow['version'])
 task_definitions = load_task_definitions()
+
+# Check and initialize session state for form visibility
+if 'show_form' not in st.session_state:
+    st.session_state['show_form'] = False
+
+# Create columns for the buttons
+col1, col2, col3, col4, col5, col6 = st.columns(6)  # TODO: Agregar más botones
+
+# Button to toggle form visibility in the first column
+with col1:
+    if st.button('Create New Task'):
+        st.session_state.show_form = not st.session_state.show_form
+
+# Conditionally display the form based on toggle state
+if st.session_state.show_form:
+    with st.form("create_task_form"):
+        new_task_name = st.text_input("Task Name")
+        new_task_inputs = st.text_area("Inputs (comma-separated)")
+        new_task_outputs = st.text_area("Outputs (comma-separated)")
+        submitted = st.form_submit_button("Submit Task")
+        if submitted:
+            if new_task_name and new_task_name not in task_definitions:
+                task_definitions[new_task_name] = {
+                    "name": new_task_name,
+                    "inputs": [{"alias": inp.strip()} for inp in new_task_inputs.split(',') if inp],
+                    "outputs": [{"alias": out.strip()} for out in new_task_outputs.split(',') if out]
+                }
+                flow_definition["task_instances"][new_task_name] = {"type": new_task_name, "to": {}}
+                save_task_definitions(task_definitions)
+                save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
+                st.success("Task created successfully!")
+                st.session_state.show_form = False
+                st.rerun()
+            else:
+                st.error("Task name is required or already exists.")
 
 # Create nodes, edges, and levels for the agraph
 nodes = []
@@ -110,3 +142,33 @@ if selection:
     if st.sidebar.button("Remove Edge"):
         update_edges('remove', source_task, target_task, workflow['alias'], workflow['version'], flow_definition)
         st.rerun()
+
+    # Assuming your other functions and imports are defined here
+
+    # Check if 'confirm_delete' is not in session_state, then initialize it
+    if 'confirm_delete' not in st.session_state:
+        st.session_state['confirm_delete'] = None
+
+    # UI for confirming task deletion
+    if st.sidebar.button("Delete Task", key="delete_task", type="primary"):
+        if st.session_state.confirm_delete == selected_task:
+            # Perform deletion if confirmed
+            if selected_task in task_definitions:
+                del task_definitions[selected_task]
+            if selected_task in flow_definition["task_instances"]:
+                del flow_definition["task_instances"][selected_task]
+            for task, details in flow_definition["task_instances"].items():
+                if 'to' in details:
+                    details['to'] = [t for t in details['to'] if t != selected_task]
+
+            save_task_definitions(task_definitions)
+            save_workflow_definition(workflow['alias'], workflow['version'], flow_definition)
+
+            st.success(f"Task '{selected_task}' deleted successfully!")
+            st.session_state.confirm_delete = None  # Reset the confirmation state
+            st.rerun()
+        else:
+            # Set confirmation and show warning
+            st.session_state.confirm_delete = selected_task
+            st.sidebar.warning(
+                f"Are you sure you want to delete '{selected_task}'? Click 'Delete Task' again to confirm.")
