@@ -1,7 +1,9 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
-    save_workflow_definition, save_task_definitions, determine_levels, add_item, update_edges, create_task, \
+    save_task_definitions
+from altscore_workflow_builder.custom_tasks_utils import determine_levels, add_item, update_edges, create_task, \
     delete_task
+from altscore_workflow_builder.native_tasks_utils import add_native_task, remove_native_task
 from altscore_workflow_builder.utils import hide_deploy_button
 from streamlit_agraph import agraph, Node, Edge, Config
 
@@ -21,7 +23,7 @@ if 'create_task' not in st.session_state:
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if st.button('Create New Task'):
+    if st.button('Create Custom Task'):
         st.session_state.create_task = not st.session_state.create_task
 
 if st.session_state.create_task:
@@ -32,14 +34,37 @@ if st.session_state.create_task:
         submitted = st.form_submit_button("Submit Task")
         if submitted:
             if new_task_name and new_task_name not in custom_task_definitions:
-                create_task(new_task_name, custom_task_definitions, new_task_inputs, new_task_outputs, workflow['alias'],
+                create_task(new_task_name, custom_task_definitions, new_task_inputs, new_task_outputs,
+                            workflow['alias'],
                             workflow['version'], flow_definition)
                 st.session_state.create_task = False
                 st.rerun()
             else:
                 st.error("Task name is required or already exists.")
 
+# Check if 'confirm_delete' is not in session_state, then initialize it
+if 'add_native_task' not in st.session_state:
+    st.session_state['add_native_task'] = None
+
+# Button to toggle form visibility in the first column
+with col2:
+    if st.button('Create Native Task'):
+        st.session_state.add_native_task = not st.session_state.add_native_task
+
+if st.session_state.add_native_task:
+    with st.form("create_native_task_form"):
+        new_task_name = st.text_input("Task Name")
+        native_task = st.selectbox("Native Task", list(native_task_definitions.keys()))
+        if st.form_submit_button("Submit Task"):
+            if new_task_name and new_task_name not in custom_task_definitions:
+                add_native_task(new_task_name, native_task, workflow['alias'], workflow['version'], flow_definition)
+                st.session_state.add_native_task = False
+                st.rerun()
+            else:
+                st.error("Task name is required or already exists.")
+
 # Create nodes, edges, and levels for the agraph
+
 nodes = []
 edges = []
 task_nodes = flow_definition["task_instances"]
@@ -52,8 +77,13 @@ for task_name, task_info in flow_definition["task_instances"].items():
     label = f"{task_name}"
     tooltip = f"Inputs: {inputs}\nOutputs: {outputs}"
     level = levels[task_name]
+    # get category of task if it's in custom task definitions or native task definitions
+    task_category = "Custom" if task_name in custom_task_definitions else "Native"
+    shape = "dot" if task_category == "Custom" else "diamond"
+    color = "lightblue" if task_category == "Custom" else "lightgreen"
     nodes.append(
-        Node(id=task_name, label=label, color="lightblue", size=50, x=level_spacing[level].pop(0), y=level * 150,
+        Node(id=task_name, label=label, shape=shape, color=color, size=50, x=level_spacing[level].pop(0),
+             y=level * 150,
              title=tooltip))
 
     for next_task in task_info.get("to", []):
@@ -87,23 +117,18 @@ if selection:
         task_details = task_definitions.get(task_info['type'], {})
 
         # Inputs, Outputs, Overrides, Conversions management
-        for detail_key in ['inputs', 'outputs', 'overrides', 'conversions']:
+        for detail_key in ['inputs', 'outputs']:
             # Add a Title
             st.sidebar.title(f"{detail_key.capitalize()} Management")
             st.sidebar.json(task_details.get(detail_key, []))
 
-            if detail_key in ['overrides', 'conversions']:
-                key_name = st.sidebar.text_input(f"Key for {detail_key[:-1]}", key=f"{detail_key}_key")
-                value_name = st.sidebar.text_input(f"Value for {detail_key[:-1]}", key=f"{detail_key}_value")
-                item_details = {"key": key_name, "value": value_name}
-                button_label = f"Add new {detail_key[:-1]}"
-                if st.sidebar.button(button_label):
-                    add_item(task_details, detail_key, item_details, custom_task_definitions, selected_task, is_key_value=True)
-            else:
-                alias_name = st.sidebar.text_input(f"Alias for {detail_key[:-1]}", key=f"{detail_key}_alias")
-                item_details = {"alias": alias_name}
-                button_label = f"Add new {detail_key[:-1]}"
-                if st.sidebar.button(button_label):
+            alias_name = st.sidebar.text_input(f"Alias for {detail_key[:-1]}", key=f"{detail_key}_alias")
+            item_details = {"alias": alias_name}
+            button_label = f"Add new {detail_key[:-1]}"
+            if st.sidebar.button(button_label):
+                if selected_task in list(native_task_definitions.keys()):
+                    st.sidebar.error(f"Cannot add {detail_key} to a native task.")
+                else:
                     add_item(task_details, detail_key, item_details, custom_task_definitions, selected_task)
 
             # Deletion interface remains largely the same
@@ -112,16 +137,15 @@ if selection:
             item_to_remove = st.sidebar.selectbox(f"Select {detail_key[:-1]} to remove", aliases,
                                                   key=f"{detail_key}_remove")
             if st.sidebar.button(f"Remove selected {detail_key[:-1]}"):
-                if detail_key in ['overrides', 'conversions']:
-                    task_details[detail_key] = [item for item in task_details[detail_key] if
-                                                f"{item['key']}:{item['value']}" != item_to_remove]
+                if selected_task in list(native_task_definitions.keys()):
+                    st.sidebar.error(f"Cannot remove {detail_key} from a native task.")
                 else:
                     task_details[detail_key] = [item for item in task_details[detail_key] if
                                                 item['alias'] != item_to_remove]
-                task_definitions[selected_task] = task_details
-                save_task_definitions(custom_task_definitions)
-                st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
-                st.rerun()
+                    task_definitions[selected_task] = task_details
+                    save_task_definitions(custom_task_definitions)
+                    st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
+                    st.rerun()
 
     # UI for edge management
     st.sidebar.title("Manage Edges")
@@ -143,9 +167,13 @@ if selection:
         if st.button('Delete Task', key="delete_task", type="primary"):
             # UI for confirming task deletion
             if st.session_state.confirm_delete == selected_task:
-                delete_task(selected_task, custom_task_definitions, flow_definition, workflow)
-                st.session_state.confirm_delete = None  # Reset the confirmation state
-                st.rerun()
+                if selected_task in custom_task_definitions:
+                    delete_task(selected_task, custom_task_definitions, flow_definition, workflow)
+                    st.session_state.confirm_delete = None  # Reset the confirmation state
+                    st.rerun()
+                elif selected_task in native_task_definitions:
+                    remove_native_task(selected_task, flow_definition, workflow)
+                    st.session_state.confirm_delete = None
             else:
                 # Set confirmation and show warning
                 st.session_state.confirm_delete = selected_task
