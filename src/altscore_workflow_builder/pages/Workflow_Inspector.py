@@ -7,7 +7,8 @@ from altscore_workflow_builder.utils import hide_deploy_button
 hide_deploy_button()
 st.title("Workflow Inspector")
 all_workflows = list_workflows()
-task_definitions = load_task_definitions()
+native_task_definitions, custom_task_definitions = load_task_definitions()
+task_definitions = {**native_task_definitions, **custom_task_definitions}
 workflow = st.selectbox(label="Select Workflow", options=all_workflows, format_func=lambda x: x["label"])
 workflow_definition = load_workflow_definition(
     workflow_alias=workflow["alias"],

@@ -64,7 +64,6 @@ if st.session_state.add_native_task:
                 st.error("Task name is required or already exists.")
 
 # Create nodes, edges, and levels for the agraph
-
 nodes = []
 edges = []
 task_nodes = flow_definition["task_instances"]
