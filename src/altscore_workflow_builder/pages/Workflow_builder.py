@@ -15,17 +15,17 @@ flow_definition = load_workflow_definition(workflow['alias'], workflow['version'
 native_task_definitions, custom_task_definitions = load_task_definitions()
 task_definitions = {**native_task_definitions, **custom_task_definitions}
 
-# Check and initialize session state for form visibility
-if 'create_task' not in st.session_state:
-    st.session_state['create_task'] = False
+
 
 # Create columns for the buttons
 col1, col2, col3, col4 = st.columns(4)
 
+# UI for creating custom task
+if 'create_task' not in st.session_state:
+    st.session_state['create_task'] = False
 with col1:
     if st.button('Create Custom Task'):
         st.session_state.create_task = not st.session_state.create_task
-
 if st.session_state.create_task:
     with st.form("create_task_form"):
         new_task_name = st.text_input("Task Name")
@@ -42,11 +42,9 @@ if st.session_state.create_task:
             else:
                 st.error("Task name is required or already exists.")
 
-# Check if 'confirm_delete' is not in session_state, then initialize it
+# UI for adding native task
 if 'add_native_task' not in st.session_state:
     st.session_state['add_native_task'] = None
-
-# Button to toggle form visibility in the first column
 with col2:
     if st.button('Create Native Task'):
         st.session_state.add_native_task = not st.session_state.add_native_task
@@ -63,11 +61,11 @@ if st.session_state.add_native_task:
             else:
                 st.error("Task name is required or already exists.")
 
-# Create a text with model inputs, which are the workflow_args in the flow definition
+# UI for workflow arguments
 st.sidebar.title("Workflow Arguments")
 st.sidebar.json(flow_definition.get("workflow_args", []))
 
-# Create nodes, edges, and levels for the agraph
+# UI for the graph
 nodes = []
 edges = []
 task_nodes = flow_definition["task_instances"]
@@ -119,9 +117,8 @@ if selection:
         task_info = task_nodes[selected_task]
         task_details = task_definitions.get(task_info['type'], {})
 
-        # Inputs, Outputs, Overrides, Conversions management
+        # UI for add/remove Inputs, Outputs
         for detail_key in ['inputs', 'outputs']:
-            # Add a Title
             st.sidebar.title(f"{detail_key.capitalize()} Management")
             st.sidebar.json(task_details.get(detail_key, []))
 
@@ -134,7 +131,6 @@ if selection:
                 else:
                     add_item(task_details, detail_key, item_details, custom_task_definitions, selected_task)
 
-            # Deletion interface remains largely the same
             aliases = [item['alias'] if 'alias' in item else f"{item['key']}:{item['value']}" for item in
                        task_details.get(detail_key, [])]
             item_to_remove = st.sidebar.selectbox(f"Select {detail_key[:-1]} to remove", aliases,
@@ -150,6 +146,25 @@ if selection:
                     st.sidebar.success(f"{detail_key[:-1].capitalize()} removed successfully!")
                     st.rerun()
 
+        # UI for Delete Task
+        if 'confirm_delete' not in st.session_state:
+            st.session_state['confirm_delete'] = None
+        with col4:
+            if st.button('Delete Task', key="delete_task", type="primary"):
+                if st.session_state.confirm_delete == selected_task:
+                    if selected_task in custom_task_definitions:
+                        delete_task(selected_task, custom_task_definitions, flow_definition, workflow)
+                        st.session_state.confirm_delete = None  # Reset the confirmation state
+                        st.rerun()
+                    else:
+                        remove_native_task(selected_task, workflow['alias'], workflow['version'], flow_definition)
+                        st.session_state.confirm_delete = None
+                        st.rerun()
+                else:
+                    st.session_state.confirm_delete = selected_task
+                    st.warning(
+                        f"Are you sure you want to delete '{selected_task}'? Click 'Delete Task' again to confirm.")
+
     # UI for edge management
     st.sidebar.title("Manage Edges")
     source_task = st.sidebar.selectbox("Source Task", all_task_names, index=all_task_names.index(selection))
@@ -161,24 +176,3 @@ if selection:
         update_edges('remove', source_task, target_task, workflow['alias'], workflow['version'], flow_definition)
         st.rerun()
 
-    # Check if 'confirm_delete' is not in session_state, then initialize it
-    if 'confirm_delete' not in st.session_state:
-        st.session_state['confirm_delete'] = None
-
-    # Button to toggle form visibility in the first column
-    with col4:
-        if st.button('Delete Task', key="delete_task", type="primary"):
-            # UI for confirming task deletion
-            if st.session_state.confirm_delete == selected_task:
-                if selected_task in custom_task_definitions:
-                    delete_task(selected_task, custom_task_definitions, flow_definition, workflow)
-                    st.session_state.confirm_delete = None  # Reset the confirmation state
-                    st.rerun()
-                elif selected_task in native_task_definitions:
-                    remove_native_task(selected_task, flow_definition, workflow)
-                    st.session_state.confirm_delete = None
-            else:
-                # Set confirmation and show warning
-                st.session_state.confirm_delete = selected_task
-                st.warning(
-                    f"Are you sure you want to delete '{selected_task}'? Click 'Delete Task' again to confirm.")
