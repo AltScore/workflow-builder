@@ -1,6 +1,6 @@
 import streamlit as st
 from altscore_workflow_builder.utils import list_workflows, load_workflow_definition, load_task_definitions, \
-    save_task_definitions
+    save_task_definitions, save_workflow_definition
 from altscore_workflow_builder.custom_tasks_utils import determine_levels, add_item, update_edges, create_task, \
     delete_task
 from altscore_workflow_builder.native_tasks_utils import add_native_task, remove_native_task
@@ -62,6 +62,10 @@ if st.session_state.add_native_task:
                 st.rerun()
             else:
                 st.error("Task name is required or already exists.")
+
+# Create a text with model inputs, which are the workflow_args in the flow definition
+st.sidebar.title("Workflow Arguments")
+st.sidebar.json(flow_definition.get("workflow_args", []))
 
 # Create nodes, edges, and levels for the agraph
 nodes = []

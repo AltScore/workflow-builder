@@ -13,7 +13,7 @@ def altscore_login():
     altscore = AltScore(
         client_id=config("ALTSCORE_CLIENT_ID"),
         client_secret=config("ALTSCORE_CLIENT_SECRET"),
-        environment=config("ALTSCORE_ENVIRONMENT")
+        environment=config("ENVIRONMENT")
     )
     return altscore
 

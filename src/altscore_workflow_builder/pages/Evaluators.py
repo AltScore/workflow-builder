@@ -12,7 +12,7 @@ def altscore_login():
     altscore = AltScore(
         client_id=config("ALTSCORE_CLIENT_ID"),
         client_secret=config("ALTSCORE_CLIENT_SECRET"),
-        environment=config("ALTSCORE_ENVIRONMENT")
+        environment=config("ENVIRONMENT")
     )
     return altscore
 
@@ -22,4 +22,3 @@ altscore = altscore_login()
 evaluators = altscore.borrower_central.evaluators.retrieve_all()
 
 st.selectbox("Evaluator", [None] + list(sorted([e.data.label for e in evaluators])))
-
