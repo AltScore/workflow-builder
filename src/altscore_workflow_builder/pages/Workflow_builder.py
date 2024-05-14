@@ -3,6 +3,7 @@ from altscore_workflow_builder.utils import list_workflows, load_workflow_defini
     save_task_definitions, save_workflow_definition
 from altscore_workflow_builder.custom_tasks_utils import determine_levels, add_item, update_edges, create_task, \
     delete_task
+from altscore_workflow_builder.flow_definition_utils import add_workflow_args, remove_workflow_args
 from altscore_workflow_builder.native_tasks_utils import add_native_task, remove_native_task
 from altscore_workflow_builder.utils import hide_deploy_button
 from streamlit_agraph import agraph, Node, Edge, Config
@@ -64,6 +65,17 @@ if st.session_state.add_native_task:
 # UI for workflow arguments
 st.sidebar.title("Workflow Arguments")
 st.sidebar.json(flow_definition.get("workflow_args", []))
+alias_name = st.sidebar.text_input("Alias for Workflow Argument", key="workflow_arg_alias")
+if st.sidebar.button("Add new Workflow Argument"):
+    add_workflow_args(alias_name, workflow['alias'], workflow['version'], flow_definition)
+    st.sidebar.success(f"New workflow argument added successfully!")
+    st.rerun()
+if st.sidebar.button("Remove selected Workflow Argument"):
+    remove_workflow_args(alias_name, workflow['alias'], workflow['version'], flow_definition)
+    st.sidebar.success("Workflow argument removed successfully!")
+    st.rerun()
+
+
 
 # UI for the graph
 nodes = []
