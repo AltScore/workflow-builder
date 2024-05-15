@@ -3,6 +3,7 @@ from altscore_workflow_builder.utils import list_workflows, load_workflow_defini
     save_task_definitions, save_workflow_definition
 from altscore_workflow_builder.custom_tasks_utils import determine_levels, add_item, update_edges, create_task, \
     delete_task
+from altscore_workflow_builder.input_override_utils import add_input_override
 from altscore_workflow_builder.flow_definition_utils import add_workflow_args, remove_workflow_args
 from altscore_workflow_builder.native_tasks_utils import add_native_task, remove_native_task
 from altscore_workflow_builder.utils import hide_deploy_button
@@ -15,8 +16,6 @@ workflow = st.sidebar.selectbox("Select Workflow", list_workflows())
 flow_definition = load_workflow_definition(workflow['alias'], workflow['version'])
 native_task_definitions, custom_task_definitions = load_task_definitions()
 task_definitions = {**native_task_definitions, **custom_task_definitions}
-
-
 
 # Create columns for the buttons
 col1, col2, col3, col4 = st.columns(4)
@@ -75,8 +74,6 @@ if st.sidebar.button("Remove selected Workflow Argument"):
     st.sidebar.success("Workflow argument removed successfully!")
     st.rerun()
 
-
-
 # UI for the graph
 nodes = []
 edges = []
@@ -87,10 +84,11 @@ all_task_names = list(task_nodes.keys())
 for task_name, task_info in flow_definition["task_instances"].items():
     inputs = ", ".join([inp['alias'] for inp in task_definitions.get(task_info['type'], {}).get('inputs', [])])
     outputs = ", ".join([out['alias'] for out in task_definitions.get(task_info['type'], {}).get('outputs', [])])
+    input_overrides = ", ".join(
+        [inp for inp in flow_definition['task_instances'][task_name].get('input_overrides', {})])
     label = f"{task_name}"
-    tooltip = f"Inputs: {inputs}\nOutputs: {outputs}"
+    tooltip = f"Inputs: {inputs}\nOutputs: {outputs}\nInput Overrides: {input_overrides}"
     level = levels[task_name]
-    # get category of task if it's in custom task definitions or native task definitions
     task_category = "Custom" if task_name in custom_task_definitions else "Native"
     shape = "dot" if task_category == "Custom" else "diamond"
     color = "lightblue" if task_category == "Custom" else "lightgreen"
@@ -147,6 +145,9 @@ if selection:
                        task_details.get(detail_key, [])]
             item_to_remove = st.sidebar.selectbox(f"Select {detail_key[:-1]} to remove", aliases,
                                                   key=f"{detail_key}_remove")
+            if st.sidebar.button(f"Add borrower_package to {detail_key[:-1]}"):
+                add_input_override(selected_task, workflow['alias'], workflow['version'], flow_definition)
+
             if st.sidebar.button(f"Remove selected {detail_key[:-1]}"):
                 if selected_task in list(native_task_definitions.keys()):
                     st.sidebar.error(f"Cannot remove {detail_key} from a native task.")
@@ -187,4 +188,3 @@ if selection:
     if st.sidebar.button("Remove Edge"):
         update_edges('remove', source_task, target_task, workflow['alias'], workflow['version'], flow_definition)
         st.rerun()
-
