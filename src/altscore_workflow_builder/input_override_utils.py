@@ -39,7 +39,7 @@ def add_input_override(selected_task, workflow_alias, workflow_version, flow_def
         return
 
     if st.button("Add"):
-        flow_definition['task_instances'][selected_task]['input_overrides'] = {
+        flow_definition['task_instances'][selected_task]['input_override'] = {
             f"borrower_package_{selected_sources}":
                 {
                     "type": "borrower_package",
@@ -51,7 +51,7 @@ def add_input_override(selected_task, workflow_alias, workflow_version, flow_def
             selected_data_models = None
         else:
             selected_data_models = f'by_{convert_snake_case_to_camel_case(selected_data_models[0])}'
-            flow_definition['task_instances'][selected_task]['input_overrides']['package_alias'] = selected_data_models
+            flow_definition['task_instances'][selected_task]['input_override']['package_alias'] = selected_data_models
         save_workflow_definition(workflow_alias, workflow_version, flow_definition)
         st.rerun()
 
