@@ -46,7 +46,9 @@ def save_workflow_definition(workflow_alias: str, workflow_version: str, flow_de
 def list_workflows():
     workflows = [f for f in os.listdir(Path(config("PROJECT_ROOT")) / "app" / "workflows") if
                  os.path.isdir(Path(config("PROJECT_ROOT")) / "app" / "workflows" / f)]
+
     return [
-        {"alias": workflow.split("_")[0], "version": workflow.split("_")[-1], "label": workflow} for workflow in
-        workflows
+        {"alias": "_".join(workflow.split("_")[:-1]),
+         "version": workflow.split("_")[-1],
+         "label": workflow} for workflow in workflows
     ]
